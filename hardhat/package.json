@@ -1,0 +1,14 @@
+{
+  "name": "ev-charging-hardhat",
+  "version": "1.0.0",
+  "description": "Smart contracts for EV charging project",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.3"
+  }
+}
