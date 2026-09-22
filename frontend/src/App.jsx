@@ -24,6 +24,7 @@ import {
   Radio
 } from "lucide-react";
 import "./App.css";
+import MiniMap from "./MiniMap";
 
 // Import deployed contract address and ABI
 import deployedContracts from "../../hardhat/deployed_contracts.json";
@@ -542,7 +543,7 @@ function App() {
           {walletAddress ? (
             <>
               <div className="role-pill" id="role-display-pill">
-                <Zap size={14} fill="#141810" />
+                <Zap size={14} fill="var(--brand-coral)" color="var(--brand-coral)" />
                 <span>{isAdmin ? "Admin" : "EV driver"}</span>
               </div>
 
@@ -607,12 +608,12 @@ function App() {
         <section className="admin-console-section" id="admin-pricing-console">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
             <div>
-              <h2 style={{ margin: "0 0 0.35rem 0", fontSize: "1.4rem", fontWeight: "800", color: "#141810", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <Sliders size={22} color="#141810" />
+              <h2 style={{ margin: "0 0 0.35rem 0", fontSize: "1.4rem", fontWeight: "800", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Sliders size={22} color="var(--brand-coral)" />
                 Station Pricing & Dynamic Grid Management
               </h2>
               <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Station Owner / Admin Account: <code style={{ color: "#141810", background: "rgba(182, 245, 0, 0.3)", padding: "0.2rem 0.5rem", borderRadius: "6px", fontWeight: "600" }}>{walletAddress}</code>
+                Station Owner / Admin Account: <code style={{ color: "var(--brand-coral)", background: "rgba(240, 89, 65, 0.2)", padding: "0.2rem 0.5rem", borderRadius: "6px", fontWeight: "600", border: "1px solid rgba(240, 89, 65, 0.3)" }}>{walletAddress}</code>
               </span>
             </div>
             <button 
@@ -1250,7 +1251,7 @@ function App() {
 
               {estimatedRate && (
                 <div className="price-estimator-box" id="price-estimator">
-                  <span style={{ fontWeight: "700", color: "#141810" }}>Dynamic Price Estimate (Contract View)</span>
+                  <span style={{ fontWeight: "700", color: "var(--brand-coral)" }}>Dynamic Price Estimate (Contract View)</span>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginTop: "0.25rem" }}>
                     <div>Estimated Rate: <strong>{formatWeiToEth(estimatedRate)} ETH/Wh</strong></div>
                     <div>Estimated total cost (at 25 kWh): <strong>{formatWeiToEth(estimatedTotal)} ETH</strong></div>
@@ -1279,6 +1280,15 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Floating Bottom-Right Campus Stations Mini Map */}
+      <MiniMap 
+        stations={stations}
+        spotlightStationId={spotlightStationId}
+        onSelectStation={(id) => setSpotlightStationId(id)}
+        onBookStation={(station) => setSelectedStation(station)}
+        activeSession={activeSession}
+      />
     </div>
   );
 }
