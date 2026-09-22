@@ -1,16 +1,29 @@
-# React + Vite
+# VoltNet Web3 Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is the decentralized frontend dashboard for the **VoltNet** Smart EV Charging Network, built with React 19, Vite, and Ethers.js v6.
 
-Currently, two official plugins are available:
+For the full architectural breakdown, component guides, and lifecycle workflows, see the complete summary:
+👉 **[FRONTEND_SUMMARY.md](file:///d:/ev%20charging/frontend/FRONTEND_SUMMARY.md)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+# Install dependencies
+npm install
 
-## Expanding the Oxlint configuration
+# Start Vite development server
+npm run dev
+# Dashboard opens at http://localhost:5173
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+# Build for production
+npm run build
+```
+
+## Key Features
+* **Role-Based Access Control (RBAC):** Automatic separation between Station Admins (Account #0) and EV Drivers (Account #1).
+* **Live IoT Telemetry:** Real-time gauges for voltage, current, kilowatts, and cumulative energy streamed via MQTT.
+* **On-Chain Settlement:** Ethers.js v6 integration for slot bookings and peer-to-peer bill settlement.
+* **AI Integration:** Live demand prediction badges and battery health (SOH%) degradation tracking.
+

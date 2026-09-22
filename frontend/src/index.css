@@ -3,9 +3,19 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: #f8fafc;
-  background-color: #020617;
+  --bg-main: #FFFADC;
+  --lime-bright: #B6F500;
+  --lime-mid: #A4DD00;
+  --lime-dark: #98CD00;
+  --dark-neutral: #141810;
+  --dark-card: #181e13;
+  --text-main: #141810;
+  --text-muted: #5e6651;
+  --border-light: rgba(20, 24, 16, 0.08);
+
+  color-scheme: light;
+  color: var(--text-main);
+  background-color: var(--bg-main);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -18,25 +28,26 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: radial-gradient(circle at 50% -10%, #1e1b4b, #030712 60%);
-  background-attachment: fixed;
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Custom Scrollbar for premium feel */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #FFFADC;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #A4DD00;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #98CD00;
 }

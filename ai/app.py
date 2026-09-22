@@ -168,8 +168,8 @@ def predict_demand(station_id: int, hour: int, day_of_week: int):
     if not (0 <= day_of_week <= 6):
         raise HTTPException(status_code=400, detail="Day of week must be between 0 (Mon) and 6 (Sun).")
 
-    # Predict occupancy using the trained model
-    X_pred = np.array([[station_id, hour, day_of_week]])
+    # Predict occupancy using the trained model with matching feature names
+    X_pred = pd.DataFrame([[station_id, hour, day_of_week]], columns=["station_id", "hour", "day_of_week"])
     prediction = demand_model.predict(X_pred)[0]
     
     # Bound forecast between 5% and 98%

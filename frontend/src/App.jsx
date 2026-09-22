@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import { 
   Zap, 
@@ -11,7 +11,17 @@ import {
   CheckCircle, 
   Activity, 
   BatteryCharging, 
-  X 
+  X, 
+  Shield, 
+  Sliders, 
+  Car,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Gauge,
+  CreditCard,
+  Check,
+  Radio
 } from "lucide-react";
 import "./App.css";
 
@@ -25,13 +35,18 @@ function App() {
   const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletBalance, setWalletBalance] = useState("0.000");
   const [chainId, setChainId] = useState(null);
   
   const [stations, setStations] = useState([]);
   const [userSessions, setUserSessions] = useState([]);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [forecasts, setForecasts] = useState({});
   const [batteryHealth, setBatteryHealth] = useState(null);
+  const [spotlightStationId, setSpotlightStationId] = useState(1);
   
+  const carouselRef = useRef(null);
+
   // Modals / Inputs
   const [selectedStation, setSelectedStation] = useState(null);
   const [bookingTime, setBookingTime] = useState("");
@@ -40,6 +55,37 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("");
   const [estimatedRate, setEstimatedRate] = useState(null);
   const [estimatedTotal, setEstimatedTotal] = useState(null);
+
+  // Role-Based Access Control State
+  const [contractOwner, setContractOwner] = useState("");
+  const [activeTab, setActiveTab] = useState("driver"); // "driver" | "admin"
+  const [adminInputs, setAdminInputs] = useState({}); // stationId -> { demand, renewable }
+
+  const isAdmin = Boolean(
+    walletAddress && (
+      (contractOwner && walletAddress.toLowerCase() === contractOwner.toLowerCase()) ||
+      stations.some(s => s.owner && s.owner.toLowerCase() === walletAddress.toLowerCase())
+    )
+  );
+
+  // Carousel horizontal scroll helper
+  const scrollStations = (direction) => {
+    if (carouselRef.current) {
+      const scrollAmount = direction === "left" ? -260 : 260;
+      carouselRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  // Fetch ETH balance
+  const updateBalance = async (addr, prov) => {
+    if (!addr || !prov) return;
+    try {
+      const bal = await prov.getBalance(addr);
+      setWalletBalance(parseFloat(ethers.formatEther(bal)).toFixed(4));
+    } catch (e) {
+      console.warn("Could not fetch balance:", e);
+    }
+  };
 
   // Connect MetaMask Wallet
   const connectWallet = async () => {
@@ -53,7 +99,6 @@ function App() {
       setStatusMessage("Connecting to MetaMask...");
       const browserProvider = new ethers.BrowserProvider(window.ethereum);
       
-      // Request account access
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const activeSigner = await browserProvider.getSigner();
       const network = await browserProvider.getNetwork();
@@ -63,13 +108,13 @@ function App() {
       setWalletAddress(accounts[0]);
       setChainId(network.chainId);
 
-      // Verify network is Localhost (1337 or 31337)
+      await updateBalance(accounts[0], browserProvider);
+
       if (Number(network.chainId) !== 1337 && Number(network.chainId) !== 31337) {
         setStatusMessage("Wrong network! Prompting switch to Localhost 8545...");
         await switchToLocalNetwork();
       }
 
-      // Create contract instance
       if (deployedContracts && deployedContracts.address) {
         const evContract = new ethers.Contract(
           deployedContracts.address,
@@ -77,9 +122,14 @@ function App() {
           activeSigner
         );
         setContract(evContract);
+        try {
+          const ownerAddr = await evContract.owner();
+          setContractOwner(ownerAddr);
+        } catch (e) {
+          console.warn("Could not query contract owner:", e);
+        }
         setStatusMessage("Wallet connected successfully!");
       } else {
-        console.error("Contract info not loaded.");
         setStatusMessage("Contract data missing. Deploy contract first.");
       }
     } catch (err) {
@@ -133,10 +183,12 @@ function App() {
     setContract(null);
     setWalletAddress("");
     setChainId(null);
+    setContractOwner("");
+    setActiveTab("driver");
     setStatusMessage("Wallet disconnected.");
   };
 
-  // Force MetaMask account switcher to select another account
+  // Force MetaMask account switcher
   const switchAccount = async () => {
     if (!window.ethereum) return;
     try {
@@ -146,7 +198,6 @@ function App() {
         method: "wallet_requestPermissions",
         params: [{ eth_accounts: {} }],
       });
-      // accountsChanged listener will trigger automatic reconnection
     } catch (err) {
       console.error("Failed to switch account:", err);
       setStatusMessage("Failed to switch account.");
@@ -166,6 +217,8 @@ function App() {
           setWalletAddress("");
           setSigner(null);
           setContract(null);
+          setContractOwner("");
+          setActiveTab("driver");
         }
       });
 
@@ -182,6 +235,20 @@ function App() {
       const data = await response.json();
       if (Array.isArray(data)) {
         setStations(data);
+        // Default spotlight to first station if not yet set
+        setSpotlightStationId(prev => (prev ? prev : (data[0]?.stationId || 1)));
+        setAdminInputs(prev => {
+          const updated = { ...prev };
+          data.forEach(s => {
+            if (!updated[s.stationId]) {
+              updated[s.stationId] = {
+                demand: s.demandLevel || 0,
+                renewable: s.renewableRatio || 0
+              };
+            }
+          });
+          return updated;
+        });
       }
     } catch (err) {
       console.error("Error fetching stations:", err);
@@ -244,17 +311,17 @@ function App() {
   useEffect(() => {
     fetchStations();
     
-    // Set up polling (every 5 seconds) as requested for maximum simplicity & reliability
     const pollInterval = setInterval(() => {
       fetchStations();
       if (walletAddress) {
         fetchUserSessions();
         fetchBatteryHealth();
+        if (provider) updateBalance(walletAddress, provider);
       }
-    }, 5000);
+    }, 4000);
 
     return () => clearInterval(pollInterval);
-  }, [walletAddress, fetchStations, fetchUserSessions, fetchBatteryHealth]);
+  }, [walletAddress, provider, fetchStations, fetchUserSessions, fetchBatteryHealth]);
 
   useEffect(() => {
     if (walletAddress) {
@@ -278,9 +345,6 @@ function App() {
       const startTimeUnix = Math.floor(new Date(bookingTime).getTime() / 1000);
       const durationSeconds = parseInt(bookingDuration) * 60;
       
-      console.log(`Booking Station: ${selectedStation.stationId}, Start: ${startTimeUnix}, Dur: ${durationSeconds}`);
-      
-      // Call bookSlot on smart contract
       const tx = await contract.bookSlot(
         selectedStation.stationId,
         startTimeUnix,
@@ -291,12 +355,12 @@ function App() {
       await tx.wait();
       
       setStatusMessage("Booking confirmed on-chain!");
-      setSelectedStation(null); // Close modal
+      setSelectedStation(null);
       fetchStations();
       fetchUserSessions();
+      if (provider) updateBalance(walletAddress, provider);
     } catch (err) {
       console.error("Booking error:", err);
-      // Try parsing contract error
       let errMsg = "Transaction failed.";
       if (err.message.includes("Time slot already booked")) {
         errMsg = "Overlapping slot: This time range is already booked!";
@@ -321,7 +385,7 @@ function App() {
       setStatusMessage("Confirming start on-chain...");
       await tx.wait();
       
-      setStatusMessage("Charging started successfully!");
+      setStatusMessage("Charging started successfully! IoT simulator telemetry activated.");
       fetchUserSessions();
       fetchStations();
     } catch (err) {
@@ -342,11 +406,12 @@ function App() {
       const tx = await contract.payBill(sessionId, {
         value: totalBillWei
       });
-      setStatusMessage("Processing contract payment...");
+      setStatusMessage("Processing contract payment on blockchain...");
       await tx.wait();
       
-      setStatusMessage("Invoice paid successfully!");
+      setStatusMessage("Invoice paid and settled on-chain!");
       fetchUserSessions();
+      if (provider) updateBalance(walletAddress, provider);
     } catch (err) {
       console.error("Payment error:", err);
       alert("Payment failed. Please verify your MetaMask balance.");
@@ -356,21 +421,25 @@ function App() {
   };
 
   // Update Station pricing parameters on-chain (Owner only)
-  const handleUpdatePricing = async (stationId, demandLevel, renewableRatio) => {
+  const handleUpdatePricing = async (stationId, demandOverride, renewableOverride) => {
     if (!contract) return;
+    const current = adminInputs[stationId] || {};
+    const dVal = demandOverride !== undefined ? demandOverride : (current.demand || 0);
+    const rVal = renewableOverride !== undefined ? renewableOverride : (current.renewable || 0);
+
     try {
       setIsLoading(true);
       setStatusMessage(`Updating pricing config for station #${stationId} on-chain...`);
       
       const tx = await contract.updateStationPricing(
         stationId,
-        parseInt(demandLevel),
-        parseInt(renewableRatio)
+        parseInt(dVal),
+        parseInt(rVal)
       );
       setStatusMessage("Awaiting on-chain pricing confirmation...");
       await tx.wait();
       
-      setStatusMessage("Pricing parameters successfully updated!");
+      setStatusMessage(`Station #${stationId} pricing successfully updated!`);
       fetchStations();
     } catch (err) {
       console.error("Pricing update error:", err);
@@ -393,7 +462,6 @@ function App() {
       const rateWei = await contract.calculateRatePerWh(selectedStation.stationId, timestamp);
       setEstimatedRate(rateWei.toString());
 
-      // Estimate session total at average 25 kWh (25000 Wh) consumption
       const averageWh = 25000n;
       const totalWei = rateWei * averageWh;
       setEstimatedTotal(totalWei.toString());
@@ -404,7 +472,6 @@ function App() {
     }
   }, [contract, selectedStation, bookingTime]);
 
-  // Hook to update price estimate on form values change
   useEffect(() => {
     updatePriceEstimate();
   }, [bookingTime, selectedStation, contract, updatePriceEstimate]);
@@ -412,405 +479,748 @@ function App() {
   // Convert Wei to Eth for readable bills
   const formatWeiToEth = (weiString) => {
     try {
-      const val = ethers.formatEther(weiString);
-      return parseFloat(val).toFixed(6);
+      if (!weiString) return "0";
+      const val = ethers.formatEther(weiString.toString());
+      const num = parseFloat(val);
+      if (num === 0) return "0";
+      if (num < 0.00001) return num.toFixed(8);
+      if (num < 0.01) return num.toFixed(6);
+      return num.toFixed(4);
     } catch (e) {
       return "0";
     }
   };
 
+  // Determine which session to display in right telemetry card:
+  // Prioritize selectedSessionId if user chose one, else actively Charging, else Booked, else Completed, else first
+  const activeSession = selectedSessionId
+    ? userSessions.find(s => s.sessionId === selectedSessionId)
+    : userSessions.find(s => s.status === "Charging") || 
+      userSessions.find(s => s.status === "Booked") || 
+      userSessions.find(s => s.status === "Completed") ||
+      (userSessions.length > 0 ? userSessions[0] : null);
+
+  const lastTelemetry = activeSession && activeSession.telemetry && activeSession.telemetry.length > 0 
+    ? activeSession.telemetry[activeSession.telemetry.length - 1] 
+    : null;
+
+  // Selected spotlight station data (from real stations list)
+  const currentSpotlightStation = stations.find(s => s.stationId === spotlightStationId) || stations[0] || {
+    stationId: 1,
+    name: "VIT Main Gate Charger",
+    coordinates: "12.9692° N, 79.1559° E",
+    basePricePerWh: "620000000000",
+    demandLevel: 0,
+    renewableRatio: 25,
+    active: true,
+    status: "Available",
+    queue: []
+  };
+
+  const spotlightForecast = forecasts[currentSpotlightStation.stationId];
+  const unpaidSession = userSessions.find(s => s.status === "Completed");
+
   return (
     <div className="app-container">
-      {/* Header section */}
+      {/* Header section matching exact mockup layout */}
       <header className="app-header">
-        <div className="logo-section">
-          <Zap className="logo-icon" size={32} />
-          <h1 className="app-title">VoltNet Dashboard</h1>
+        <div className="brand-section">
+          <div className="brand-icon-circle">
+            <Zap size={22} fill="var(--lime-bright)" color="var(--lime-bright)" />
+          </div>
+          <div className="brand-text-col">
+            <h1 className="brand-title">VoltNet</h1>
+            <span className="brand-subtitle">CAMPUS ENERGY BOARD</span>
+          </div>
+          <div className="network-pill">
+            <span className={`network-dot ${Number(chainId) === 1337 || Number(chainId) === 31337 ? "" : "offline"}`}></span>
+            {Number(chainId) === 1337 || Number(chainId) === 31337 ? "Localhost 1337" : walletAddress ? `Chain ${chainId}` : "Localhost 1337"}
+          </div>
         </div>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+
+        <div className="header-right-actions">
           {walletAddress ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <div className="wallet-address" id="wallet-display">
-                {walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}
+            <>
+              <div className="role-pill" id="role-display-pill">
+                <Zap size={14} fill="#141810" />
+                <span>{isAdmin ? "Admin" : "EV driver"}</span>
               </div>
-              <button 
-                className="btn-disconnect" 
+
+              <div 
+                className="account-pill" 
                 onClick={switchAccount}
-                title="Switch MetaMask Account"
+                title="Click to switch MetaMask account"
+                id="account-pill-btn"
               >
-                Switch Account
-              </button>
+                <span>{walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}</span>
+                <ChevronDown size={14} />
+              </div>
+
               <button 
-                className="btn-disconnect-only" 
-                onClick={disconnectWallet}
-                title="Disconnect Wallet"
+                className={`btn-admin-toggle ${activeTab === "admin" ? "active" : ""}`}
+                onClick={() => {
+                  if (!isAdmin) {
+                    alert("Admin access requires the contract owner account (e.g. 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266). Switch account in MetaMask.");
+                    return;
+                  }
+                  setActiveTab(activeTab === "admin" ? "driver" : "admin");
+                }}
+                id="btn-admin-view-toggle"
               >
-                Disconnect
+                Admin view
               </button>
-            </div>
+            </>
           ) : (
             <button 
-              className="btn-connect" 
+              className="btn-connect-wallet" 
               onClick={connectWallet} 
               disabled={isLoading}
               id="btn-meta-connect"
             >
-              <Wallet size={18} />
+              <Wallet size={16} />
               Connect Wallet
             </button>
           )}
 
           {walletAddress && Number(chainId) !== 1337 && Number(chainId) !== 31337 && (
             <button 
+              className="btn-network-switch-warning"
               onClick={switchToLocalNetwork}
-              style={{
-                background: "#dc2626",
-                color: "#ffffff",
-                border: "none",
-                padding: "0.4rem 0.8rem",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "0.8rem",
-                boxShadow: "0 0 10px rgba(220, 38, 38, 0.5)"
-              }}
               title="Click to switch MetaMask to Localhost 8545"
             >
-              ⚠️ Switch to Localhost 8545
+              ⚠️ Switch Network
             </button>
           )}
-
-          <div className="network-badge">
-            <span className={`network-dot ${Number(chainId) === 1337 || Number(chainId) === 31337 ? "online" : "offline"}`}></span>
-            {Number(chainId) === 1337 || Number(chainId) === 31337 ? "Localhost (1337)" : Number(chainId) === 80002 ? "Amoy Testnet" : Number(chainId) === 11155111 ? "Sepolia Testnet" : walletAddress ? `Wrong Network (${chainId})` : "Disconnected"}
-          </div>
         </div>
       </header>
 
-      {/* Main Status bar for operations */}
+      {/* Main Status bar for feedback operations */}
       {statusMessage && (
-        <div className="info-alert" id="status-bar">
-          <Activity size={18} className="charging-bolt" />
+        <div className="status-banner" id="status-bar">
+          <Activity size={16} color="var(--lime-dark)" />
           <span>{statusMessage}</span>
         </div>
       )}
 
-      {/* Grid container */}
-      <div className="dashboard-grid">
-        {/* Left Side: Stations list */}
-        <section className="glass-panel">
-          <h2 className="section-title">
-            <MapPin size={20} />
-            Charging Stations (VIT Vellore)
-          </h2>
-          
-          <div className="station-list">
-            {stations.length === 0 ? (
-              <div className="empty-state">No stations registered yet. Compile contracts and run backend seed script!</div>
-            ) : (
-              stations.map((station) => (
-                <div key={station.stationId} className="station-card" id={`station-card-${station.stationId}`} style={{ flexDirection: "column", alignItems: "stretch", gap: "1rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                    <div className="station-details">
-                      <span className="station-name">{station.name}</span>
-                      <span className="station-sub">
-                        <MapPin size={12} /> {station.coordinates}
-                      </span>
-                      
-                      <div className="station-metrics">
-                        <div className="metric-pill">
-                          Base: {formatWeiToEth(station.basePricePerWh.toString())} ETH/Wh
-                        </div>
-                        <div className="metric-pill">
-                          Demand: +{station.demandLevel}%
-                        </div>
-                        {station.renewableRatio > 0 && (
-                          <div className="metric-pill green">
-                            Solar: {station.renewableRatio}%
-                          </div>
-                        )}
-                        {station.waitEstimateMinutes > 0 && (
-                          <div className="metric-pill">
-                            <Clock size={12} /> Est Wait: {station.waitEstimateMinutes}m
-                          </div>
-                        )}
-                      </div>
-                      
-                      {forecasts[station.stationId] && (
-                        <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#60a5fa", display: "flex", flexDirection: "column", gap: "0.15rem" }} id={`ai-forecast-${station.stationId}`}>
-                          <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontWeight: "600" }}>
-                            <TrendingUp size={12} />
-                            AI Forecast: {forecasts[station.stationId].predicted_occupancy_ratio}% Occupancy
-                          </span>
-                          <span style={{ color: "#94a3b8", fontStyle: "italic", fontSize: "0.75rem" }}>
-                            {forecasts[station.stationId].recommendation}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="station-actions">
-                      <span className={`status-badge ${station.status}`}>
-                        {station.status}
-                      </span>
-                      
-                      {station.active && (
-                        <button
-                          className="btn-primary"
-                          onClick={() => setSelectedStation(station)}
-                          id={`btn-book-${station.stationId}`}
-                        >
-                          Book Slot
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Scheduled Bookings list */}
-                  {station.queue && station.queue.length > 0 && (
-                    <div className="station-queue-section">
-                      <span className="queue-title">Scheduled Bookings / Queue ({station.queue.length}):</span>
-                      <div className="queue-list">
-                        {station.queue.map((q, idx) => (
-                          <div key={idx} className="queue-item">
-                            <Clock size={10} />
-                            <span>
-                              {new Date(q.startTime).toLocaleString()} for {Math.floor(q.duration / 60)} mins
-                            </span>
-                            <span className="queue-user">({q.userAddress.substring(0, 6)}...)</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Owner Pricing Admin Panel */}
-                  {walletAddress && walletAddress.toLowerCase() === station.owner.toLowerCase() && (
-                    <div className="admin-pricing-panel">
-                      <h4>Pricing Configuration (Owner Admin)</h4>
-                      <div className="admin-inputs">
-                        <div className="input-group">
-                          <label>Demand Markup %</label>
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max="200" 
-                            defaultValue={station.demandLevel}
-                            id={`input-demand-${station.stationId}`}
-                          />
-                        </div>
-                        <div className="input-group">
-                          <label>Solar/Renewable %</label>
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max="100" 
-                            defaultValue={station.renewableRatio}
-                            id={`input-renewable-${station.stationId}`}
-                          />
-                        </div>
-                        <button 
-                          className="btn-admin-save"
-                          onClick={(e) => {
-                            const dVal = document.getElementById(`input-demand-${station.stationId}`).value;
-                            const rVal = document.getElementById(`input-renewable-${station.stationId}`).value;
-                            handleUpdatePricing(station.stationId, dVal, rVal);
-                          }}
-                          id={`btn-admin-save-${station.stationId}`}
-                        >
-                          Apply to Chain
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Right Side: Active sessions & Billing */}
-        <section className="glass-panel">
-          <h2 className="section-title">
-            <BatteryCharging size={20} />
-            My Charging Sessions
-          </h2>
-
-          {batteryHealth && (
-            <div className="battery-health-box" style={{ 
-              background: "rgba(16, 185, 129, 0.05)", 
-              border: "1px solid rgba(16, 185, 129, 0.15)", 
-              borderRadius: "0.5rem", 
-              padding: "1rem", 
-              marginBottom: "1.5rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.25rem"
-            }} id="battery-health-widget">
-              <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#34d399", fontWeight: "700", letterSpacing: "0.05em" }}>AI Battery Health Profile</span>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
-                <span style={{ fontSize: "1.2rem", fontWeight: "800", color: "#f1f5f9" }}>{batteryHealth.battery_health}% SOH</span>
-                <span style={{ fontSize: "0.8rem", fontWeight: "600", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "9999px" }}>
-                  {batteryHealth.status}
-                </span>
-              </div>
-              <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic", marginTop: "0.25rem" }}>
-                {batteryHealth.advice}
+      {/* Admin Pricing Console Tab */}
+      {isAdmin && activeTab === "admin" ? (
+        <section className="admin-console-section" id="admin-pricing-console">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+            <div>
+              <h2 style={{ margin: "0 0 0.35rem 0", fontSize: "1.4rem", fontWeight: "800", color: "#141810", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Sliders size={22} color="#141810" />
+                Station Pricing & Dynamic Grid Management
+              </h2>
+              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Station Owner / Admin Account: <code style={{ color: "#141810", background: "rgba(182, 245, 0, 0.3)", padding: "0.2rem 0.5rem", borderRadius: "6px", fontWeight: "600" }}>{walletAddress}</code>
               </span>
             </div>
-          )}
+            <button 
+              className="btn-admin-toggle"
+              onClick={() => setActiveTab("driver")}
+            >
+              Back to Driver View
+            </button>
+          </div>
 
-          <div className="sessions-list">
-            {!walletAddress ? (
-              <div className="empty-state">Connect your MetaMask wallet to view sessions and billing status.</div>
-            ) : userSessions.length === 0 ? (
-              <div className="empty-state">No active bookings or historical sessions found for your address.</div>
-            ) : (
-              userSessions.map((session) => (
-                <div key={session.sessionId} className="session-card" id={`session-card-${session.sessionId}`}>
-                  <div className="session-header">
-                    <span>Session ID: {session.sessionId}</span>
-                    <span>{session.status}</span>
-                  </div>
+          <div className="admin-console-grid">
+            {stations.map((st) => {
+              const currentVals = adminInputs[st.stationId] || { demand: st.demandLevel, renewable: st.renewableRatio };
+              const isOwner = walletAddress.toLowerCase() === st.owner.toLowerCase() || (contractOwner && walletAddress.toLowerCase() === contractOwner.toLowerCase());
 
-                  <div className="session-station-name">
-                    Station #{session.stationId} (VIT Campus)
-                  </div>
-
-                  <div className="session-time">
-                    <Calendar size={14} />
-                    {new Date(session.startTime).toLocaleString()}
-                  </div>
-                  
-                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "0.25rem" }}>
-                    Duration: {Math.floor(session.duration / 60)} minutes
-                  </div>
-
-                  {session.fraudFlag && (
-                    <div style={{ 
-                      marginTop: "0.75rem", 
-                      padding: "0.5rem 0.75rem", 
-                      background: "rgba(239, 68, 68, 0.08)", 
-                      border: "1px solid rgba(239, 68, 68, 0.2)", 
-                      borderRadius: "0.375rem", 
-                      color: "#f87171",
-                      fontSize: "0.8rem",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem"
-                    }} id={`fraud-alert-${session.sessionId}`}>
-                      <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-                      <span><strong>AI Fraud Alert:</strong> {session.fraudReason}</span>
-                    </div>
-                  )}
-
-                  {/* Telemetry panel for active charging session */}
-                  {session.status === "Charging" && (
-                    <div className="telemetry-panel" id={`telemetry-${session.sessionId}`}>
-                      <div className="telemetry-header">Live Telemetry Feed (MQTT)</div>
-                      <div className="telemetry-grid">
-                        <div className="telemetry-box">
-                          <div className="telemetry-val">{session.telemetry && session.telemetry.length > 0 ? session.telemetry[session.telemetry.length - 1].current.toFixed(1) : "0.0"}A</div>
-                          <div className="telemetry-lbl">Current</div>
-                        </div>
-                        <div className="telemetry-box">
-                          <div className="telemetry-val">{session.telemetry && session.telemetry.length > 0 ? session.telemetry[session.telemetry.length - 1].voltage.toFixed(0) : "0"}V</div>
-                          <div className="telemetry-lbl">Voltage</div>
-                        </div>
-                        <div className="telemetry-box">
-                          <div className="telemetry-val">{session.telemetry && session.telemetry.length > 0 ? (session.telemetry[session.telemetry.length - 1].power / 1000).toFixed(2) : "0.0"}kW</div>
-                          <div className="telemetry-lbl">Power</div>
-                        </div>
-                      </div>
-                      <div className="telemetry-header" style={{ marginBottom: "0.25rem" }}>Total Consumed: {session.energyConsumedWh} Wh</div>
-                      
-                      {/* Pulse active bar */}
-                      <div className="progress-bar-container">
-                        <div 
-                          className="progress-bar-fill"
-                          style={{ width: `${Math.min(100, (session.energyConsumedWh / 20000) * 100)}%` }}
-                        ></div>
+              return (
+                <div key={st.stationId} className="admin-console-card" id={`admin-card-${st.stationId}`}>
+                  <div className="admin-console-header">
+                    <div>
+                      <div className="admin-station-title">Station #{st.stationId}: {st.name}</div>
+                      <div className="admin-station-coords">
+                        <MapPin size={12} /> {st.coordinates}
                       </div>
                     </div>
-                  )}
+                    <span className="spotlight-status-pill">
+                      {st.status}
+                    </span>
+                  </div>
 
-                  {/* Session actions based on state */}
-                  <div className="session-footer">
-                    {session.status === "Booked" && (
-                      <>
-                        <span className="charging-indicator" style={{ color: "#f59e0b" }}>
-                          Ready to Charge
-                        </span>
-                        <button
-                          className="btn-primary"
-                          onClick={() => handleStartCharging(session.sessionId)}
-                          disabled={isLoading}
-                          id={`btn-start-${session.sessionId}`}
-                        >
-                          Start Charging
-                        </button>
-                      </>
-                    )}
+                  <div className="admin-input-card">
+                    <div className="admin-input-header">
+                      <span>Demand Markup %</span>
+                      <span className="admin-input-val">+{currentVals.demand}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="200" 
+                      step="5"
+                      value={currentVals.demand}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setAdminInputs(prev => ({
+                          ...prev,
+                          [st.stationId]: { ...(prev[st.stationId] || {}), demand: val }
+                        }));
+                      }}
+                      className="admin-range-slider"
+                      id={`slider-demand-${st.stationId}`}
+                    />
+                  </div>
 
-                    {session.status === "Charging" && (
-                      <div className="charging-indicator">
-                        <Zap size={14} className="charging-bolt" />
-                        <span>Charging in progress...</span>
-                      </div>
-                    )}
+                  <div className="admin-input-card">
+                    <div className="admin-input-header">
+                      <span>Solar / Renewable Ratio %</span>
+                      <span className="admin-input-val">{currentVals.renewable}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      step="5"
+                      value={currentVals.renewable}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setAdminInputs(prev => ({
+                          ...prev,
+                          [st.stationId]: { ...(prev[st.stationId] || {}), renewable: val }
+                        }));
+                      }}
+                      className="admin-range-slider"
+                      id={`slider-renewable-${st.stationId}`}
+                    />
+                  </div>
 
-                    {session.status === "Completed" && (
-                      <>
-                        <div className="text-completed">
-                          Bill: {formatWeiToEth(session.totalBill)} ETH
-                        </div>
-                        <button
-                          className="btn-primary"
-                          onClick={() => handlePayBill(session.sessionId, session.totalBill)}
-                          disabled={isLoading}
-                          style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
-                          id={`btn-pay-${session.sessionId}`}
-                        >
-                          Pay Bill
-                        </button>
-                      </>
-                    )}
-
-                    {session.status === "Paid" && (
-                      <div className="text-paid">
-                        <CheckCircle size={14} />
-                        <span>Bill Paid ({formatWeiToEth(session.totalBill)} ETH)</span>
-                      </div>
-                    )}
-
-                    {session.status === "Cancelled" && (
-                      <div className="text-cancelled">
-                        Session Cancelled
-                      </div>
-                    )}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                      Queue: {st.queue ? st.queue.length : 0} bookings
+                    </span>
+                    <button 
+                      className="btn-admin-save" 
+                      onClick={() => handleUpdatePricing(st.stationId)}
+                      disabled={isLoading || !isOwner}
+                      id={`btn-apply-pricing-${st.stationId}`}
+                    >
+                      {isLoading ? "Saving..." : "Apply to Chain"}
+                    </button>
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
         </section>
-      </div>
+      ) : (
+        /* Driver Main Dashboard Layout */
+        <div className="dashboard-grid-layout">
+          {/* Left Column: Campus stations carousel + Spotlight Station */}
+          <div className="left-dashboard-col">
+            {/* Campus stations top container */}
+            <div className="campus-stations-container">
+              <div className="campus-stations-header">
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <h2 className="campus-stations-title">Campus stations</h2>
+                  <span className="campus-stations-badge-info">
+                    {stations.filter(s => s.status === "Available").length} available · {stations.length} stations
+                  </span>
+                </div>
+
+                {/* Horizontal Navigation Arrow Buttons */}
+                <div className="carousel-nav-buttons">
+                  <button 
+                    className="btn-carousel-nav" 
+                    onClick={() => scrollStations("left")} 
+                    title="Scroll Left"
+                    id="btn-scroll-left"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button 
+                    className="btn-carousel-nav" 
+                    onClick={() => scrollStations("right")} 
+                    title="Scroll Right"
+                    id="btn-scroll-right"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Horizontal Scroll Row with ALL real campus stations */}
+              <div className="stations-carousel-row" ref={carouselRef} id="stations-carousel">
+                {stations.map((st) => {
+                  const isSelected = currentSpotlightStation.stationId === st.stationId;
+                  const isAvailable = st.status === "Available";
+                  const dotColor = isAvailable ? "#16a34a" : "#f59e0b";
+
+                  return (
+                    <div 
+                      key={st.stationId}
+                      className={`station-pill-card ${isSelected ? "active" : ""}`}
+                      onClick={() => setSpotlightStationId(st.stationId)}
+                      id={`station-pill-${st.stationId}`}
+                    >
+                      <div className="station-pill-card-top">
+                        <span className="station-pill-code" title={st.name}>
+                          #{st.stationId} {st.name.replace(" Charger", "").replace(" Charging Point", "").replace(" Hub", "")}
+                        </span>
+                        <span className="station-pill-dot" style={{ background: dotColor }}></span>
+                      </div>
+                      <span className="station-pill-rate">
+                        {formatWeiToEth(st.basePricePerWh.toString())} ETH/Wh
+                      </span>
+                      <span className="station-pill-tag">
+                        {st.status} {st.renewableRatio > 0 ? `· ${st.renewableRatio}% Solar` : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Station Spotlight Hero Card */}
+            <div className="spotlight-station-card" id="spotlight-station-card">
+              <div className="spotlight-header-row">
+                <div className="spotlight-title-group">
+                  <div className="spotlight-title-line">
+                    <h2 className="spotlight-name">
+                      Station #{currentSpotlightStation.stationId} · {currentSpotlightStation.name}
+                    </h2>
+                    <span className="spotlight-status-pill">
+                      <span 
+                        className="station-pill-dot" 
+                        style={{ background: currentSpotlightStation.status === "Available" ? "#16a34a" : "#f59e0b" }}
+                      ></span>
+                      {currentSpotlightStation.queue && currentSpotlightStation.queue.length > 0
+                        ? `Queue active (${currentSpotlightStation.queue.length} in line)`
+                        : currentSpotlightStation.status}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <MapPin size={13} /> {currentSpotlightStation.coordinates}
+                  </div>
+
+                  <p className="spotlight-desc">
+                    {spotlightForecast 
+                      ? `AI expects ${spotlightForecast.predicted_occupancy_ratio}% occupancy. ${spotlightForecast.recommendation || ""}`
+                      : `Dynamic demand and renewable pricing are synchronized for Station #${currentSpotlightStation.stationId}.`}
+                    {currentSpotlightStation.waitEstimateMinutes > 0 
+                      ? ` Current estimated wait is ~${currentSpotlightStation.waitEstimateMinutes} min.` 
+                      : " Ready for immediate slot booking."}
+                  </p>
+                </div>
+
+                <button 
+                  className="btn-book-slot-hero"
+                  onClick={() => setSelectedStation(currentSpotlightStation)}
+                  id="btn-spotlight-book"
+                >
+                  <Calendar size={18} />
+                  Book slot
+                </button>
+              </div>
+
+              {/* 4 Stat Metric Tiles */}
+              <div className="spotlight-metrics-row">
+                {/* Tile 1: Base Rate */}
+                <div className="metric-tile tile-light">
+                  <span className="metric-tile-lbl">BASE RATE</span>
+                  <div className="metric-tile-val">
+                    {formatWeiToEth(currentSpotlightStation.basePricePerWh.toString())}
+                  </div>
+                  <span className="metric-tile-sub">ETH per Wh</span>
+                </div>
+
+                {/* Tile 2: Demand */}
+                <div className="metric-tile tile-warm">
+                  <span className="metric-tile-lbl">DEMAND</span>
+                  <div className="metric-tile-val">
+                    +{currentSpotlightStation.demandLevel || 0}%
+                  </div>
+                  <span className="metric-tile-sub">dynamic markup</span>
+                </div>
+
+                {/* Tile 3: Solar Mix */}
+                <div className="metric-tile tile-lime">
+                  <span className="metric-tile-lbl">SOLAR MIX</span>
+                  <div className="metric-tile-val">
+                    {currentSpotlightStation.renewableRatio || 0}%
+                  </div>
+                  <span className="metric-tile-sub">renewable energy</span>
+                </div>
+
+                {/* Tile 4: AI Forecast (Dark Tile) */}
+                <div className="metric-tile tile-dark">
+                  <span className="metric-tile-lbl">FORECAST</span>
+                  <div className="metric-tile-val">
+                    {spotlightForecast ? spotlightForecast.predicted_occupancy_ratio : 0}%
+                  </div>
+                  <span className="metric-tile-sub">occupancy in 2h</span>
+                </div>
+              </div>
+
+              {/* Sliders / Gauge Rows */}
+              <div className="spotlight-bars-group">
+                <div className="gauge-bar-row">
+                  <span className="gauge-bar-label">QUEUE DEPTH</span>
+                  <div className="gauge-bar-track">
+                    <div 
+                      className="gauge-bar-fill" 
+                      style={{ 
+                        width: `${Math.min(100, (((currentSpotlightStation.queue ? currentSpotlightStation.queue.length : 0) / 5) * 100))}%`,
+                        background: "var(--lime-bright)"
+                      }}
+                    ></div>
+                  </div>
+                  <span className="gauge-bar-val">
+                    {currentSpotlightStation.queue ? currentSpotlightStation.queue.length : 0}/5
+                  </span>
+                </div>
+
+                <div className="gauge-bar-row">
+                  <span className="gauge-bar-label">GRID LOAD</span>
+                  <div className="gauge-bar-track">
+                    <div 
+                      className="gauge-bar-fill" 
+                      style={{ 
+                        width: `${spotlightForecast ? spotlightForecast.predicted_occupancy_ratio : 35}%`,
+                        background: "var(--lime-mid)"
+                      }}
+                    ></div>
+                  </div>
+                  <span className="gauge-bar-val">
+                    {spotlightForecast ? spotlightForecast.predicted_occupancy_ratio : 35}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Scheduled Bookings Queue List if any exists */}
+              {currentSpotlightStation.queue && currentSpotlightStation.queue.length > 0 && (
+                <div className="spotlight-queue-box">
+                  <span className="spotlight-queue-title">
+                    <Clock size={13} /> Scheduled Queue ({currentSpotlightStation.queue.length})
+                  </span>
+                  <div className="spotlight-queue-items">
+                    {currentSpotlightStation.queue.map((q, idx) => (
+                      <div key={idx} className="spotlight-queue-item">
+                        <span>{new Date(q.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({Math.floor(q.duration / 60)} min)</span>
+                        <span style={{ fontFamily: "monospace", color: "var(--text-muted)" }}>{q.userAddress.substring(0, 6)}...</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Live Telemetry + Battery Health + Wallet Settle */}
+          <div className="right-dashboard-col">
+            {/* Card 1: Dynamic Live Telemetry / Session Manager */}
+            <div className="telemetry-card-container" id="live-telemetry-card">
+              <div className="telemetry-card-header">
+                <h3 className="telemetry-title">Live telemetry</h3>
+                {activeSession ? (
+                  <span className="telemetry-session-badge">
+                    <span 
+                      className="station-pill-dot" 
+                      style={{ 
+                        background: activeSession.status === "Charging" ? "#16a34a" : activeSession.status === "Booked" ? "#f59e0b" : "#64748b" 
+                      }}
+                    ></span>
+                    Session #{activeSession.sessionId} · {activeSession.status}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600" }}>
+                    Idle
+                  </span>
+                )}
+              </div>
+
+              {/* Session switcher tabs if user has multiple sessions */}
+              {userSessions.length > 1 && (
+                <div className="session-tabs-row">
+                  {userSessions.map((s) => (
+                    <button 
+                      key={s.sessionId}
+                      className={`session-tab-pill ${(activeSession && activeSession.sessionId === s.sessionId) ? "active" : ""}`}
+                      onClick={() => setSelectedSessionId(s.sessionId)}
+                    >
+                      #{s.sessionId} ({s.status})
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* State A: Wallet Not Connected */}
+              {!walletAddress ? (
+                <div className="telemetry-empty-box">
+                  <div className="telemetry-empty-icon">
+                    <Zap size={24} />
+                  </div>
+                  <h4 style={{ margin: 0, fontWeight: "800", color: "var(--dark-neutral)" }}>Wallet Not Connected</h4>
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    Connect MetaMask to monitor live telemetry, activate bookings, and settle invoices.
+                  </p>
+                  <button 
+                    className="btn-primary" 
+                    onClick={connectWallet}
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    Connect Wallet
+                  </button>
+                </div>
+              ) : !activeSession ? (
+                /* State B: Connected, but No Active or Booked Sessions */
+                <div className="telemetry-empty-box">
+                  <div className="telemetry-empty-icon">
+                    <BatteryCharging size={24} />
+                  </div>
+                  <h4 style={{ margin: 0, fontWeight: "800", color: "var(--dark-neutral)" }}>No Active Charging Session</h4>
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    Select a station from the campus board and click <strong>Book slot</strong> to schedule charging. Live telemetry will stream automatically once your session starts.
+                  </p>
+                </div>
+              ) : activeSession.status === "Booked" ? (
+                /* State C: Session is Booked (Ready to Start) */
+                <div className="session-booked-hero">
+                  <div className="session-booked-header">
+                    <div>
+                      <div style={{ fontWeight: "800", fontSize: "1rem", color: "var(--dark-neutral)" }}>
+                        Station #{activeSession.stationId}
+                      </div>
+                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.15rem" }}>
+                        <Clock size={12} /> {new Date(activeSession.startTime).toLocaleString()}
+                      </div>
+                    </div>
+                    <span className="session-booked-badge">Ready to Start</span>
+                  </div>
+
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                    Duration: {Math.floor(activeSession.duration / 60)} minutes · Advance on-chain reservation
+                  </div>
+
+                  <button 
+                    className="btn-telemetry-main btn-start"
+                    onClick={() => handleStartCharging(activeSession.sessionId)}
+                    disabled={isLoading}
+                    id={`btn-start-${activeSession.sessionId}`}
+                    style={{ marginTop: "0.25rem" }}
+                  >
+                    <Zap size={16} />
+                    Start Charging Now
+                  </button>
+                </div>
+              ) : activeSession.status === "Charging" ? (
+                /* State D: Session is Actively Charging (LIVE MQTT TELEMETRY) */
+                <>
+                  <div className="telemetry-2x2-grid">
+                    <div className="telemetry-box-tile">
+                      <div className="telemetry-box-top">
+                        <span className="telemetry-box-lbl">CURRENT</span>
+                        <Activity size={14} />
+                      </div>
+                      <div className="telemetry-box-num">
+                        {lastTelemetry ? lastTelemetry.current.toFixed(1) : "0.0"} <span style={{ fontSize: "0.9rem" }}>A</span>
+                      </div>
+                    </div>
+
+                    <div className="telemetry-box-tile">
+                      <div className="telemetry-box-top">
+                        <span className="telemetry-box-lbl">VOLTAGE</span>
+                        <Gauge size={14} />
+                      </div>
+                      <div className="telemetry-box-num">
+                        {lastTelemetry ? lastTelemetry.voltage.toFixed(0) : "0"} <span style={{ fontSize: "0.9rem" }}>V</span>
+                      </div>
+                    </div>
+
+                    <div className="telemetry-box-tile">
+                      <div className="telemetry-box-top">
+                        <span className="telemetry-box-lbl">POWER</span>
+                        <Zap size={14} />
+                      </div>
+                      <div className="telemetry-box-num">
+                        {lastTelemetry ? (lastTelemetry.power / 1000).toFixed(2) : "0.00"} <span style={{ fontSize: "0.9rem" }}>kW</span>
+                      </div>
+                    </div>
+
+                    <div className="telemetry-box-tile">
+                      <div className="telemetry-box-top">
+                        <span className="telemetry-box-lbl">ENERGY</span>
+                        <BatteryCharging size={14} />
+                      </div>
+                      <div className="telemetry-box-num">
+                        {activeSession.energyConsumedWh || 0} <span style={{ fontSize: "0.9rem" }}>Wh</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Energy delivered Progress Bar */}
+                  <div className="telemetry-progress-block">
+                    <div className="telemetry-progress-header">
+                      <span>Energy delivered</span>
+                      <span>{activeSession.energyConsumedWh || 0} Wh</span>
+                    </div>
+                    <div className="telemetry-progress-track">
+                      <div 
+                        className="telemetry-progress-fill"
+                        style={{ 
+                          width: `${Math.min(100, ((activeSession.energyConsumedWh || 0) / 25000) * 100)}%` 
+                        }}
+                      ></div>
+                    </div>
+                    <div className="telemetry-progress-footer">
+                      <span>{lastTelemetry ? (lastTelemetry.power / 1000).toFixed(2) : "0.00"} kW active</span>
+                      <span style={{ color: "#15803d", fontWeight: "700" }}>MQTT Stream Live</span>
+                    </div>
+                  </div>
+
+                  <div className="telemetry-btn-row">
+                    <button 
+                      className="btn-telemetry-main"
+                      onClick={() => alert("Charging session is monitored automatically via IoT Simulator. Telemetry is streaming live!")}
+                      id="btn-telemetry-stop"
+                    >
+                      Stop Charging
+                    </button>
+                  </div>
+                </>
+              ) : activeSession.status === "Completed" ? (
+                /* State E: Session Completed (Ready for on-chain payment) */
+                <div className="session-completed-hero">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--dark-neutral)" }}>
+                        Session #{activeSession.sessionId} Finished
+                      </div>
+                      <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        Energy: {activeSession.energyConsumedWh} Wh
+                      </span>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "1.25rem", fontWeight: "800", color: "#15803d" }}>
+                        {formatWeiToEth(activeSession.totalBill)} ETH
+                      </div>
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Total Due</span>
+                    </div>
+                  </div>
+
+                  {/* AI Fraud Validation Status */}
+                  {activeSession.fraudFlag ? (
+                    <div className="fraud-badge-alert">
+                      <AlertTriangle size={14} />
+                      <span><strong>AI Fraud Alert:</strong> {activeSession.fraudReason}</span>
+                    </div>
+                  ) : (
+                    <div className="fraud-badge-clean">
+                      <CheckCircle size={14} />
+                      <span>AI Fraud Verification: Normal consumption verified</span>
+                    </div>
+                  )}
+
+                  <button 
+                    className="btn-settle-onchain"
+                    onClick={() => handlePayBill(activeSession.sessionId, activeSession.totalBill)}
+                    disabled={isLoading}
+                    id={`btn-pay-${activeSession.sessionId}`}
+                    style={{ width: "100%", marginTop: "0.25rem" }}
+                  >
+                    <CreditCard size={16} />
+                    Pay & Settle Invoice on-chain
+                  </button>
+                </div>
+              ) : (
+                /* State F: Session Paid */
+                <div className="telemetry-empty-box" style={{ background: "#f0fdf4", borderColor: "rgba(34, 197, 94, 0.3)" }}>
+                  <CheckCircle size={32} color="#15803d" />
+                  <h4 style={{ margin: 0, fontWeight: "800", color: "#15803d" }}>
+                    Session #{activeSession.sessionId} Settled
+                  </h4>
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    Bill of {formatWeiToEth(activeSession.totalBill)} ETH was paid on blockchain.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: AI Battery health widget */}
+            <div className="battery-health-pill-card" id="battery-health-card">
+              <div className="battery-circle-score">
+                {batteryHealth ? batteryHealth.battery_health : 94}
+              </div>
+              <div className="battery-text-col">
+                <span className="battery-status-title">
+                  <Zap size={15} fill="var(--dark-neutral)" />
+                  Battery health · {batteryHealth ? batteryHealth.status : "Good"}
+                </span>
+                <span className="battery-status-desc">
+                  {batteryHealth ? batteryHealth.advice : "Charging speed is steady. No degradation flags detected."}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3: Dark Wallet Balance & Settle on-chain */}
+            <div className="wallet-settle-card" id="wallet-settle-card">
+              <div className="wallet-balance-row">
+                <div className="wallet-lbl-col">
+                  <span className="wallet-sub-lbl">WALLET BALANCE</span>
+                  <span className="wallet-sub-val">
+                    {unpaidSession ? "Pending Invoice" : "Account Status"}
+                  </span>
+                </div>
+                <div className="wallet-eth-col">
+                  <span className="wallet-eth-num">{walletBalance} ETH</span>
+                  <span className="wallet-est-num">
+                    {unpaidSession ? `${formatWeiToEth(unpaidSession.totalBill)} ETH` : "All Settled"}
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                className="btn-settle-onchain"
+                onClick={() => {
+                  if (unpaidSession) {
+                    handlePayBill(unpaidSession.sessionId, unpaidSession.totalBill);
+                  } else if (activeSession && activeSession.status === "Charging") {
+                    alert("Your session is currently charging. Invoices settle on-chain upon session completion.");
+                  } else if (activeSession && activeSession.status === "Booked") {
+                    handleStartCharging(activeSession.sessionId);
+                  } else if (walletAddress) {
+                    alert(`Wallet balance verified: ${walletBalance} ETH on Localhost (1337). All active transactions are settled!`);
+                  } else {
+                    connectWallet();
+                  }
+                }}
+                id="btn-settle-onchain"
+              >
+                {unpaidSession 
+                  ? `✉ Settle Session #${unpaidSession.sessionId} on-chain` 
+                  : `✉ Settle on-chain`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Booking Dialogue Modal Overlay */}
       {selectedStation && (
         <div className="booking-overlay">
           <div className="booking-modal">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "700" }}>Book Charging Slot</h3>
-              <button className="btn-secondary" style={{ padding: "0.25rem", borderRadius: "50%" }} onClick={() => setSelectedStation(null)}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "800", color: "var(--dark-neutral)" }}>
+                Book Charging Slot
+              </h3>
+              <button 
+                className="btn-secondary" 
+                style={{ padding: "0.25rem 0.5rem", borderRadius: "50%" }} 
+                onClick={() => setSelectedStation(null)}
+              >
                 <X size={16} />
               </button>
             </div>
 
-            <div style={{ color: "#94a3b8", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
-              <strong>Station:</strong> {selectedStation.name} <br/>
-              <strong>Base Price:</strong> {formatWeiToEth(selectedStation.basePricePerWh.toString())} ETH/Wh
+            <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1.25rem", lineHeight: "1.5" }}>
+              <strong>Station:</strong> #{selectedStation.stationId} {selectedStation.name} <br/>
+              <strong>Location:</strong> {selectedStation.coordinates} <br/>
+              <strong>Base Price:</strong> {formatWeiToEth(selectedStation.basePricePerWh.toString())} ETH/Wh <br/>
+              <strong>Demand Adjustment:</strong> +{selectedStation.demandLevel || 0}%
             </div>
 
             <form onSubmit={handleBookSlot}>
@@ -840,10 +1250,10 @@ function App() {
 
               {estimatedRate && (
                 <div className="price-estimator-box" id="price-estimator">
-                  <span className="estimator-title">Dynamic Price Estimate (Contract View)</span>
-                  <div className="estimator-details">
-                    <div>Estimated Rate: <span className="estimator-highlight">{formatWeiToEth(estimatedRate)} ETH/Wh</span></div>
-                    <div>Estimated total cost (at 25 kWh): <span className="estimator-highlight">{formatWeiToEth(estimatedTotal)} ETH</span></div>
+                  <span style={{ fontWeight: "700", color: "#141810" }}>Dynamic Price Estimate (Contract View)</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginTop: "0.25rem" }}>
+                    <div>Estimated Rate: <strong>{formatWeiToEth(estimatedRate)} ETH/Wh</strong></div>
+                    <div>Estimated total cost (at 25 kWh): <strong>{formatWeiToEth(estimatedTotal)} ETH</strong></div>
                   </div>
                 </div>
               )}
