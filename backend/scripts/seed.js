@@ -50,15 +50,18 @@ async function seed() {
       const wallet = new ethers.Wallet(privateKey, provider);
       const contract = new ethers.Contract(deployedContracts.address, deployedContracts.abi, wallet);
 
-      console.log("Registering stations on-chain...");
+      console.log("Registering stations on-chain and syncing to MongoDB...");
       let nonce = await provider.getTransactionCount(wallet.address);
-      for (const item of mockStations) {
+      const isLocal = (process.env.RPC_URL || "").includes("127.0.0.1") || (process.env.RPC_URL || "").includes("localhost") || !process.env.RPC_URL;
+      const delay = isLocal ? 300 : 4000;
+
+      for (let i = 0; i < mockStations.length; i++) {
+        const item = mockStations[i];
         console.log(`Registering ${item.name} on-chain with nonce ${nonce}...`);
         const tx = await contract.registerStation(item.name, item.coords, item.basePrice, { nonce: nonce++ });
         const receipt = await tx.wait();
 
-        // Wait 4 seconds for RPC node block replication
-        await sleep(4000);
+        await sleep(delay);
 
         // Find StationRegistered event to get the allocated station ID
         const event = receipt.logs
@@ -67,23 +70,39 @@ async function seed() {
           })
           .find(parsedLog => parsedLog && parsedLog.name === "StationRegistered");
 
-        if (event) {
-          const stationId = Number(event.args.stationId);
-          console.log(`Station ${item.name} registered on-chain with ID ${stationId}`);
+        const stationId = event ? Number(event.args.stationId) : (i + 1);
+        console.log(`Station ${item.name} registered on-chain with ID ${stationId}`);
 
-          // Set dynamic pricing parameters
-          console.log(`Updating pricing parameters for station ${stationId} (demand: ${item.demand}%, renewable: ${item.renewable}%) with nonce ${nonce}...`);
-          const priceTx = await contract.updateStationPricing(stationId, item.demand, item.renewable, { nonce: nonce++ });
-          await priceTx.wait();
+        // Set dynamic pricing parameters
+        console.log(`Updating pricing parameters for station ${stationId} (demand: ${item.demand}%, renewable: ${item.renewable}%) with nonce ${nonce}...`);
+        const priceTx = await contract.updateStationPricing(stationId, item.demand, item.renewable, { nonce: nonce++ });
+        await priceTx.wait();
 
-          // Wait 4 seconds for RPC node block replication
-          await sleep(4000);
-        }
+        await sleep(delay);
+
+        // Upsert directly into MongoDB so frontend immediately has data
+        await Station.findOneAndUpdate(
+          { stationId: stationId },
+          {
+            stationId: stationId,
+            owner: wallet.address,
+            name: item.name,
+            coordinates: item.coords,
+            basePricePerWh: Number(item.basePrice),
+            demandLevel: item.demand,
+            renewableRatio: item.renewable,
+            active: true,
+            status: "available",
+            queue: [],
+            waitEstimateMinutes: 0
+          },
+          { upsert: true, new: true }
+        );
+        console.log(`Synced ${item.name} (ID: ${stationId}) into MongoDB.`);
       }
 
-      console.log("Blockchain seeding complete.");
-      console.log("Waiting 3 seconds for backend event listeners to finish sync...");
-      await sleep(3000);
+      console.log("Blockchain and MongoDB seeding complete.");
+      await sleep(1000);
 
     } catch (err) {
       console.error("Blockchain seeding failed. Falling back to MongoDB direct injection.", err.message);

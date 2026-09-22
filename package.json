@@ -1,0 +1,29 @@
+{
+  "name": "ev-charging",
+  "version": "1.0.0",
+  "description": "Blockchain-based EV Charging System",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "seed": "node backend/scripts/seed.js",
+    "compile:contracts": "cd hardhat && npx hardhat compile",
+    "deploy:contracts": "cd hardhat && npx hardhat run scripts/deploy.js --network amoy"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.1",
+    "express": "^4.19.2",
+    "mongoose": "^8.4.4",
+    "mqtt": "^5.7.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1",
+    "nodemon": "^3.1.4",
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.22.0"
+  }
+}

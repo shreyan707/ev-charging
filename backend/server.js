@@ -1,4 +1,5 @@
 require("dotenv").config();
+// Server configured for local Hardhat node & EV Charging services
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -90,7 +91,11 @@ function setupBlockchainListeners() {
   if (!deployedContracts) return;
   
   try {
-    provider = new ethers.JsonRpcProvider(process.env.RPC_URL || "http://127.0.0.1:8545");
+    provider = new ethers.JsonRpcProvider(
+      process.env.RPC_URL || "http://127.0.0.1:8545",
+      undefined,
+      { polling: true, pollingInterval: 2000 }
+    );
     contract = new ethers.Contract(deployedContracts.address, deployedContracts.abi, provider);
 
     // 1. StationRegistered Event Listener
@@ -370,8 +375,71 @@ async function updateWaitEstimate(stationId) {
   }
 }
 
-// Start listeners
+// Automatic reconciliation of on-chain sessions to MongoDB
+const STATUS_MAP = ["Booked", "Charging", "Completed", "Paid", "Cancelled"];
+
+async function syncSessionsFromBlockchain() {
+  if (!contract) return;
+  try {
+    const count = await contract.sessionCount();
+    const total = Number(count);
+    for (let id = 1; id <= total; id++) {
+      const s = await contract.sessions(id);
+      const userAddr = s.user;
+      if (!userAddr || userAddr === ethers.ZeroAddress) continue;
+
+      const statId = Number(s.stationId);
+      const startTime = new Date(Number(s.startTime) * 1000);
+      const duration = Number(s.duration);
+      const statusCode = Number(s.status);
+      const statusStr = STATUS_MAP[statusCode] || "Booked";
+
+      const existing = await Session.findOne({ sessionId: id });
+      if (!existing) {
+        await Session.create({
+          sessionId: id,
+          userAddress: userAddr,
+          stationId: statId,
+          startTime: startTime,
+          duration: duration,
+          status: statusStr,
+          energyConsumedWh: Number(s.energyConsumedWh || 0),
+          totalBill: s.totalBill ? s.totalBill.toString() : "0"
+        });
+
+        if (statusStr === "Booked") {
+          await Station.findOneAndUpdate(
+            { stationId: statId },
+            {
+              $push: {
+                queue: {
+                  userAddress: userAddr,
+                  sessionId: id,
+                  startTime: startTime,
+                  duration: duration
+                }
+              }
+            }
+          );
+          await updateWaitEstimate(statId);
+        }
+        console.log(`[Auto-Sync] Restored session ${id} (${statusStr}) from blockchain into MongoDB.`);
+      } else {
+        if (existing.status !== statusStr) {
+          existing.status = statusStr;
+          if (s.totalBill) existing.totalBill = s.totalBill.toString();
+          await existing.save();
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error syncing sessions from blockchain:", err.message);
+  }
+}
+
+// Start listeners and sync past sessions
 setupBlockchainListeners();
+syncSessionsFromBlockchain();
 
 // -------------------------------------------------------------
 // EXPRESS ROUTES
@@ -380,6 +448,13 @@ setupBlockchainListeners();
 // Basic sanity check route
 app.get("/", (req, res) => {
   res.json({ message: "EV Charging Network API is running" });
+});
+
+// Sync on-demand route
+app.get("/api/sessions/sync", async (req, res) => {
+  await syncSessionsFromBlockchain();
+  const all = await Session.find({});
+  res.json({ message: "Synced with blockchain", sessions: all });
 });
 
 // GET all stations
@@ -406,6 +481,7 @@ app.get("/api/stations/:id", async (req, res) => {
 // GET session history for a specific user
 app.get("/api/sessions/user/:userAddress", async (req, res) => {
   try {
+    await syncSessionsFromBlockchain();
     const userAddress = req.params.userAddress.toLowerCase();
     // Case-insensitive search on userAddress
     const sessions = await Session.find({ 

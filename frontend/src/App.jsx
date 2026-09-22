@@ -63,6 +63,12 @@ function App() {
       setWalletAddress(accounts[0]);
       setChainId(network.chainId);
 
+      // Verify network is Localhost (1337 or 31337)
+      if (Number(network.chainId) !== 1337 && Number(network.chainId) !== 31337) {
+        setStatusMessage("Wrong network! Prompting switch to Localhost 8545...");
+        await switchToLocalNetwork();
+      }
+
       // Create contract instance
       if (deployedContracts && deployedContracts.address) {
         const evContract = new ethers.Contract(
@@ -79,6 +85,71 @@ function App() {
     } catch (err) {
       console.error("Connection error:", err);
       setStatusMessage("Failed to connect wallet.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Switch MetaMask Network to Localhost 8545
+  const switchToLocalNetwork = async () => {
+    if (!window.ethereum) return;
+    const targetChainIdHex = "0x539"; // 1337
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: targetChainIdHex }],
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: targetChainIdHex,
+                chainName: "Localhost 8545",
+                rpcUrls: ["http://127.0.0.1:8545"],
+                nativeCurrency: {
+                  name: "ETH",
+                  symbol: "ETH",
+                  decimals: 18,
+                },
+              },
+            ],
+          });
+        } catch (addError) {
+          console.error("Failed to add local network:", addError);
+        }
+      } else {
+        console.error("Failed to switch to local network:", switchError);
+      }
+    }
+  };
+
+  // Disconnect MetaMask Wallet session
+  const disconnectWallet = () => {
+    setProvider(null);
+    setSigner(null);
+    setContract(null);
+    setWalletAddress("");
+    setChainId(null);
+    setStatusMessage("Wallet disconnected.");
+  };
+
+  // Force MetaMask account switcher to select another account
+  const switchAccount = async () => {
+    if (!window.ethereum) return;
+    try {
+      setIsLoading(true);
+      setStatusMessage("Requesting account switch...");
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      // accountsChanged listener will trigger automatic reconnection
+    } catch (err) {
+      console.error("Failed to switch account:", err);
+      setStatusMessage("Failed to switch account.");
     } finally {
       setIsLoading(false);
     }
@@ -359,8 +430,24 @@ function App() {
         
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           {walletAddress ? (
-            <div className="wallet-address" id="wallet-display">
-              {walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div className="wallet-address" id="wallet-display">
+                {walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}
+              </div>
+              <button 
+                className="btn-disconnect" 
+                onClick={switchAccount}
+                title="Switch MetaMask Account"
+              >
+                Switch Account
+              </button>
+              <button 
+                className="btn-disconnect-only" 
+                onClick={disconnectWallet}
+                title="Disconnect Wallet"
+              >
+                Disconnect
+              </button>
             </div>
           ) : (
             <button 
@@ -374,9 +461,29 @@ function App() {
             </button>
           )}
 
+          {walletAddress && Number(chainId) !== 1337 && Number(chainId) !== 31337 && (
+            <button 
+              onClick={switchToLocalNetwork}
+              style={{
+                background: "#dc2626",
+                color: "#ffffff",
+                border: "none",
+                padding: "0.4rem 0.8rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "0.8rem",
+                boxShadow: "0 0 10px rgba(220, 38, 38, 0.5)"
+              }}
+              title="Click to switch MetaMask to Localhost 8545"
+            >
+              ⚠️ Switch to Localhost 8545
+            </button>
+          )}
+
           <div className="network-badge">
-            <span className={`network-dot ${contract ? "online" : "offline"}`}></span>
-            {chainId === 1337n || chainId === 31337n ? "Localhost Node" : chainId === 80002n ? "Amoy Testnet" : chainId === 11155111n ? "Sepolia Testnet" : contract ? "Connected" : "Disconnected"}
+            <span className={`network-dot ${Number(chainId) === 1337 || Number(chainId) === 31337 ? "online" : "offline"}`}></span>
+            {Number(chainId) === 1337 || Number(chainId) === 31337 ? "Localhost (1337)" : Number(chainId) === 80002 ? "Amoy Testnet" : Number(chainId) === 11155111 ? "Sepolia Testnet" : walletAddress ? `Wrong Network (${chainId})` : "Disconnected"}
           </div>
         </div>
       </header>
