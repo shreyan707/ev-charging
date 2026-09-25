@@ -2,16 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { 
-  MapPin, 
   Maximize2, 
   Minimize2, 
   X, 
   Navigation, 
-  Zap, 
-  Layers, 
-  ChevronUp, 
-  ChevronDown,
-  Calendar,
   Compass
 } from "lucide-react";
 import "./MiniMap.css";
@@ -58,7 +52,7 @@ export default function MiniMap({
         attributionControl: false
       });
 
-      // CartoDB Dark Matter tiles (sleek midnight style matching #22092C theme)
+      // CartoDB Dark Matter tiles (sleek monochrome industrial style matching brutalist theme)
       const cartoKey = import.meta.env.VITE_CARTO_API_KEY;
       const tileUrl = cartoKey
         ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${cartoKey}`
@@ -100,13 +94,9 @@ export default function MiniMap({
     const map = mapInstanceRef.current;
     if (!map || !stations || stations.length === 0) return;
 
-    const bounds = [];
-
     stations.forEach((st) => {
       const coords = parseCoords(st.coordinates);
       if (!coords) return;
-
-      bounds.push(coords);
 
       const isSpotlight = st.stationId === spotlightStationId;
       const isAvailable = (st.status === "available" || st.status === "Available");
@@ -123,16 +113,15 @@ export default function MiniMap({
         className: "voltnet-map-icon-wrapper",
         html: `
           <div class="${pinClass}" id="marker-pin-${st.stationId}">
-            <div class="pin-beacon"></div>
             <div class="pin-bubble">
               <span class="pin-num">#${st.stationId}</span>
             </div>
             <div class="pin-tail"></div>
           </div>
         `,
-        iconSize: [34, 42],
-        iconAnchor: [17, 42],
-        popupAnchor: [0, -42]
+        iconSize: [30, 36],
+        iconAnchor: [15, 36],
+        popupAnchor: [0, -36]
       });
 
       // If marker already exists, update position & icon
@@ -163,7 +152,7 @@ export default function MiniMap({
       }
     });
 
-  }, [stations, spotlightStationId, activeSession, isOpen]);
+  }, [stations, spotlightStationId, activeSession, isOpen, onSelectStation]);
 
   // Pan to spotlight station when spotlightStationId changes
   useEffect(() => {
@@ -194,20 +183,23 @@ export default function MiniMap({
     }
   };
 
+  const selectedDisplayStation = activeStationData || stations.find(s => s.stationId === spotlightStationId) || stations[0];
+
   return (
     <div className={`minimap-dock-wrapper ${isExpanded ? "expanded" : ""} ${!isOpen ? "collapsed" : ""}`}>
       {/* Collapsed Pill Button */}
       {!isOpen ? (
         <button 
+          type="button"
           className="minimap-pill-toggle"
           onClick={() => setIsOpen(true)}
           title="Open Charging Stations Map"
           id="btn-open-minimap"
         >
-          <div className="minimap-pill-pulse"></div>
+          <div className="minimap-pill-pulse" />
           <Compass size={17} className="minimap-compass-icon" />
-          <span className="minimap-pill-text">Campus Map</span>
-          <span className="minimap-pill-badge">{availableCount}/{stations.length} Available</span>
+          <span className="minimap-pill-text">GIS RADAR</span>
+          <span className="minimap-pill-badge">{availableCount}/{stations.length} ONLINE</span>
         </button>
       ) : (
         /* Floating Mini Map Card */
@@ -215,13 +207,14 @@ export default function MiniMap({
           {/* Header */}
           <div className="minimap-header">
             <div className="minimap-header-title">
-              <span className="minimap-live-dot"></span>
-              <span className="minimap-title-text">VIT Station Radar</span>
-              <span className="minimap-count-tag">{availableCount} Free</span>
+              <span className="minimap-live-dot" />
+              <span>CAMPUS RADAR</span>
+              <span className="minimap-count-tag">{availableCount} FREE</span>
             </div>
 
             <div className="minimap-header-actions">
               <button 
+                type="button"
                 className="minimap-btn-icon" 
                 onClick={handleFitBounds}
                 title="Fit all campus stations"
@@ -230,6 +223,7 @@ export default function MiniMap({
                 <Navigation size={14} />
               </button>
               <button 
+                type="button"
                 className="minimap-btn-icon" 
                 onClick={() => setIsExpanded(!isExpanded)}
                 title={isExpanded ? "Collapse size" : "Expand size"}
@@ -238,9 +232,10 @@ export default function MiniMap({
                 {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
               <button 
+                type="button"
                 className="minimap-btn-icon" 
                 onClick={() => setIsOpen(false)}
-                title="Minimize map"
+                title="Close map"
                 id="btn-minimap-close"
               >
                 <X size={14} />
@@ -248,70 +243,32 @@ export default function MiniMap({
             </div>
           </div>
 
-          {/* Leaflet Map Canvas */}
+          {/* Leaflet Map Body */}
           <div className="minimap-body">
-            <div ref={mapContainerRef} className="minimap-canvas" />
+            <div ref={mapContainerRef} className="minimap-leaflet-container" />
+          </div>
 
-            {/* Floating Station Quick Info Overlay inside map */}
-            {activeStationData && (
-              <div className="minimap-station-overlay" id="minimap-overlay-info">
-                <div className="overlay-info-row">
-                  <div className="overlay-text">
-                    <span className="overlay-station-title">
-                      #{activeStationData.stationId} {activeStationData.name}
-                    </span>
-                    <span className="overlay-station-sub">
-                      {activeStationData.status === "available" || activeStationData.status === "Available" 
-                        ? "Available now" 
-                        : "Occupied"}
-                      {activeStationData.renewableRatio > 0 ? ` · ${activeStationData.renewableRatio}% Solar` : ""}
-                    </span>
-                  </div>
-
-                  <div className="overlay-action-btns">
-                    {onBookStation && (
-                      <button 
-                        className="btn-overlay-book"
-                        onClick={() => onBookStation(activeStationData)}
-                        id={`btn-minimap-book-${activeStationData.stationId}`}
-                      >
-                        <Calendar size={13} />
-                        Book
-                      </button>
-                    )}
-                  </div>
-                </div>
+          {/* Footer with Selected Station Preview */}
+          {selectedDisplayStation && (
+            <div className="minimap-footer">
+              <div className="minimap-footer-left">
+                <span className="minimap-footer-station">
+                  #{selectedDisplayStation.stationId} {selectedDisplayStation.name.replace(" Charger", "").replace(" Hub", "")}
+                </span>
+                <span className="minimap-footer-coords">
+                  {selectedDisplayStation.coordinates} · {selectedDisplayStation.status}
+                </span>
               </div>
-            )}
-          </div>
-
-          {/* Footer Quick Selector Pills */}
-          <div className="minimap-footer">
-            <div className="minimap-legend">
-              <span className="legend-item"><span className="legend-dot available"></span> Available</span>
-              <span className="legend-item"><span className="legend-dot occupied"></span> Occupied</span>
-              <span className="legend-item"><span className="legend-dot spotlight"></span> Selected</span>
+              <button 
+                type="button"
+                className="minimap-footer-action-btn"
+                onClick={() => onBookStation && onBookStation(selectedDisplayStation)}
+                id="btn-minimap-book-selected"
+              >
+                BOOK
+              </button>
             </div>
-
-            <div className="minimap-quick-pills">
-              {stations.map(st => {
-                const isSelected = st.stationId === spotlightStationId;
-                const isFree = (st.status === "available" || st.status === "Available");
-                return (
-                  <button
-                    key={st.stationId}
-                    className={`minimap-chip ${isSelected ? "active" : ""} ${isFree ? "chip-free" : "chip-busy"}`}
-                    onClick={() => {
-                      if (onSelectStation) onSelectStation(st.stationId);
-                    }}
-                    title={`${st.name} (${st.status})`}
-                  >
-                    #{st.stationId}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>

@@ -1,0 +1,324 @@
+/* VoltNet Brutalist Layout System */
+@import "./tokens.css";
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg);
+}
+
+/* 5. Header (Section 5) */
+.header-bar {
+  height: 64px;
+  background: var(--surface);
+  border-bottom: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.header-logo-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--ink);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ink);
+}
+
+.header-logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-main {
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.brand-sub {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 6. Navigation (Section 6) */
+.nav-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border-right: 1px solid var(--line-soft);
+  padding-right: 16px;
+}
+
+.nav-link {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 120ms ease;
+  user-select: none;
+}
+
+.nav-link:hover {
+  background: var(--surface-alt);
+  border-color: var(--ink);
+}
+
+.nav-link.active {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+
+/* Header Web3 Meta Elements */
+.header-meta-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-network-tag {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.network-live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  display: inline-block;
+}
+
+.network-live-dot.warn {
+  background: var(--warning);
+}
+
+.network-live-dot.err {
+  background: var(--danger);
+}
+
+.meta-wallet-tag {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-wallet-tag:hover {
+  background: var(--surface-alt);
+}
+
+.meta-role-tag {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 6px 10px;
+  background: var(--ink);
+  color: var(--surface);
+  border: 1px solid var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.meta-role-tag.admin {
+  background: var(--warning);
+  color: var(--ink);
+}
+
+/* 7. System Status Strip (Section 7) */
+.system-status-strip {
+  background: var(--surface);
+  border-bottom: 2px solid var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.status-strip-label {
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--surface);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 2px solid var(--ink);
+}
+
+.status-strip-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.status-metric-cell {
+  padding: 8px 16px;
+  border-right: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.status-metric-cell .metric-val {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.status-metric-cell .metric-lbl {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+/* Main Dashboard Workspace (Section 4) */
+.main-workspace {
+  flex: 1;
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 12-Column Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.grid-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.grid-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Section Header Motif (Section 43) */
+.brutalist-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.section-head-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.section-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* System Alerts Strip (Top of Workspace) */
+.operational-feedback-strip {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.operational-feedback-strip.active {
+  border-color: var(--ink);
+  background: var(--accent-bg);
+}

@@ -1,0 +1,96 @@
+/* VoltNet Brutalist Responsive Rules (Section 31) */
+
+/* Tablet (768px - 1199px) */
+@media (max-width: 1199px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .station-grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .header-bar {
+    padding: 0 16px;
+  }
+
+  .main-workspace {
+    padding: 16px;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
+  .header-bar {
+    height: auto;
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .header-left {
+    justify-content: space-between;
+  }
+
+  .header-right {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .nav-strip {
+    width: 100%;
+    overflow-x: auto;
+    border-right: none;
+    border-top: 1px solid var(--line-soft);
+    padding: 8px 0 0 0;
+  }
+
+  .system-status-strip {
+    flex-direction: column;
+  }
+
+  .status-strip-label {
+    border-right: none;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .status-strip-metrics {
+    flex-direction: column;
+  }
+
+  .status-metric-cell {
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
+    padding: 8px 12px;
+  }
+
+  .station-grid-container {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Single Column Mobile Stack Order (Section 31):
+     1. Network & Status
+     2. Active Session
+     3. Stations
+     4. AI
+     5. Billing / History
+  */
+  .grid-col-right {
+    order: -1; /* Place active session / telemetry above stations on mobile */
+  }
+
+  .telemetry-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .kpi-big-num {
+    font-size: 2.25rem;
+  }
+}

@@ -1,0 +1,379 @@
+/* VoltNet Brutalist Globals */
+@import "./tokens.css";
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 !important; /* Strict Brutalism */
+}
+
+html {
+  font-size: 16px;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.4;
+  overflow-x: hidden;
+}
+
+/* Industrial Grid Background Subtlety */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(to right, rgba(17, 17, 17, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  z-index: -1;
+}
+
+/* Typography Scale */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.15rem; }
+h4 { font-size: 0.95rem; }
+
+p {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-critical {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.text-success {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.text-warning {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.text-accent {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+/* Brutalist Buttons (Section 21) */
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 10px 16px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  user-select: none;
+}
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+button:active:not(:disabled), .btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+button:disabled, .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #222222;
+  color: var(--accent);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-alt);
+}
+
+.btn-destructive {
+  background: var(--surface);
+  color: var(--danger);
+  border: 2px solid var(--danger);
+}
+
+.btn-destructive:hover:not(:disabled) {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.btn-blockchain {
+  background: var(--ink);
+  color: var(--surface);
+  border: 2px solid var(--ink);
+  position: relative;
+}
+
+.btn-blockchain:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--ink);
+  background: var(--accent);
+  border-color: var(--ink);
+  box-shadow: var(--shadow-hard);
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+}
+
+.btn-lg {
+  padding: 14px 22px;
+  font-size: 0.9375rem;
+}
+
+/* Machine Inputs (Section 22) */
+input[type="text"],
+input[type="number"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+  width: 100%;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  padding: 10px 12px;
+  transition: outline 120ms ease;
+  border-radius: 0;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+/* Industrial Sliders (Section 23) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--ink);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 24px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--accent-dark);
+}
+
+input[type="range"]:focus {
+  outline: 2px solid var(--accent);
+}
+
+/* Brutalist Tables (Section 24) */
+.brutalist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+}
+
+.brutalist-table th {
+  background: var(--ink);
+  color: var(--surface);
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--ink);
+}
+
+.brutalist-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+.brutalist-table tr:last-child td {
+  border-bottom: none;
+}
+
+.brutalist-table tr:hover td {
+  background: var(--surface-alt);
+}
+
+/* Status Indicators (Section 25) */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+}
+
+.status-available {
+  color: var(--success);
+  background: rgba(22, 128, 60, 0.08);
+}
+
+.status-charging {
+  color: var(--ink);
+  background: var(--accent);
+  border-color: var(--ink);
+}
+
+.status-queued {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: #d97706;
+}
+
+.status-offline {
+  color: var(--danger);
+  background: rgba(255, 59, 48, 0.08);
+}
+
+.status-confirmed {
+  color: var(--success);
+  background: #dcfce7;
+  border-color: var(--success);
+}
+
+/* Brutalist Progress Bar */
+.brutalist-progress-track {
+  width: 100%;
+  height: 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--ink);
+  position: relative;
+  overflow: hidden;
+}
+
+.brutalist-progress-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 200ms ease;
+}
+
+.brutalist-progress-fill.accent {
+  background: var(--accent-dark);
+}
+
+/* Rectangular Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-alt);
+  border-left: 1px solid var(--line-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border: 2px solid var(--surface-alt);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}
+
+/* Reduced Motion (Section 44) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

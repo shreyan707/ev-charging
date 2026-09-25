@@ -1,0 +1,691 @@
+/* VoltNet Brutalist Components */
+@import "./tokens.css";
+
+/* ========================================================
+   8. STATION MODULE (Section 8)
+   ======================================================== */
+.station-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.station-module {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.station-module:hover {
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.station-module.selected {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  background: #fafaf7;
+}
+
+.station-module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.station-code-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.station-code {
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.station-location {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.station-power-highlight {
+  background: var(--surface-alt);
+  border: 1px solid var(--line-soft);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.station-power-highlight .p-lbl {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.station-power-highlight .p-val {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.station-params-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.param-box {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.param-box .lbl {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.param-box .val {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 2px;
+}
+
+.station-ai-forecast-bar {
+  background: var(--surface-alt);
+  border-left: 3px solid var(--ink);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink);
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.station-ai-forecast-bar .ai-lbl {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.station-action-row {
+  margin-top: auto;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.station-action-row button {
+  flex: 1;
+}
+
+/* ========================================================
+   12 & 13. ACTIVE CHARGING SESSION & TELEMETRY
+   ======================================================== */
+.active-session-module {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 20px;
+  position: relative;
+}
+
+.session-header-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.session-main-id {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.session-meta-sub {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Primary KPI: Big Power Number (Level 01) */
+.session-kpi-block {
+  background: var(--surface-alt);
+  border: 2px solid var(--ink);
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.kpi-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-left .kpi-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.kpi-big-num {
+  font-family: var(--font-mono);
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  margin-top: 4px;
+}
+
+.kpi-big-num span {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.kpi-timer-box {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.kpi-timer-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.kpi-timer-lbl {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* 4-Grid Telemetry Table (Section 13) */
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.telemetry-cell {
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.telemetry-cell .t-lbl {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.telemetry-cell .t-val {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+.telemetry-cell .t-unit {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+/* Brutalist ASCII/Progress Bar */
+.session-progress-module {
+  margin-bottom: 16px;
+  border: 1px solid var(--ink);
+  padding: 12px;
+  background: var(--surface);
+}
+
+.progress-module-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.progress-blocks-track {
+  display: flex;
+  height: 16px;
+  gap: 2px;
+  background: var(--surface-alt);
+  padding: 2px;
+  border: 1px solid var(--ink);
+}
+
+.progress-block-unit {
+  flex: 1;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.progress-block-unit.filled {
+  background: var(--ink);
+}
+
+.progress-block-unit.active-accent {
+  background: var(--accent-dark);
+}
+
+/* Telemetry Sparkline / Line Chart (Section 13) */
+.telemetry-chart-box {
+  border: 1px solid var(--ink);
+  background: var(--surface-alt);
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.sparkline-svg {
+  width: 100%;
+  height: 60px;
+  overflow: visible;
+}
+
+.sparkline-grid-line {
+  stroke: var(--line-soft);
+  stroke-dasharray: 2 2;
+  stroke-width: 1;
+}
+
+.sparkline-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+/* Session Buttons Row */
+.session-actions-row {
+  display: flex;
+  gap: 10px;
+}
+
+.session-actions-row button {
+  flex: 1;
+}
+
+/* ========================================================
+   14 & 15. AI BATTERY & DEMAND FORECAST
+   ======================================================== */
+.ai-panel-module {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 16px;
+}
+
+.ai-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-panel-title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-battery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ai-battery-kpi {
+  background: var(--surface-alt);
+  border: 1px solid var(--line-soft);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-battery-kpi .ai-kpi-lbl {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.ai-battery-kpi .ai-kpi-val {
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--ink);
+  margin-top: 2px;
+}
+
+.ai-diagnostic-note {
+  border-left: 3px solid var(--ink);
+  padding-left: 10px;
+  font-size: 0.8125rem;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
+/* ========================================================
+   16. FRAUD / ANOMALY ALERT (Section 16)
+   ======================================================== */
+.anomaly-interrupt-banner {
+  background: #fff5f5;
+  border: 2px solid var(--danger);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 4px 4px 0 var(--danger);
+}
+
+.anomaly-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.anomaly-title {
+  color: var(--danger);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anomaly-reason {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.anomaly-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ========================================================
+   17. SETTLEMENT / BILLING PANEL (Section 17)
+   ======================================================== */
+.settlement-module {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 18px;
+}
+
+.settlement-receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  margin-bottom: 16px;
+}
+
+.settlement-receipt-table td {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+
+.settlement-receipt-table td.lbl {
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.settlement-receipt-table td.val {
+  text-align: right;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.settlement-total-row td {
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  font-size: 1.1rem;
+  font-weight: 900;
+  padding: 10px 0;
+  color: var(--ink);
+}
+
+/* ========================================================
+   10. BOOKING TERMINAL MODAL (Section 10)
+   ======================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.terminal-modal {
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow-hard);
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.terminal-modal-head {
+  background: var(--ink);
+  color: var(--surface);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.terminal-modal-title {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.terminal-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--surface);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.terminal-modal-close:hover {
+  background: #333333;
+}
+
+.terminal-modal-body {
+  padding: 20px;
+}
+
+.terminal-section-divider {
+  border-bottom: 1px solid var(--ink);
+  margin: 16px 0;
+}
+
+.price-preview-terminal {
+  background: var(--surface-alt);
+  border: 1px solid var(--ink);
+  padding: 12px;
+  margin: 16px 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.price-line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.price-line.total {
+  border-top: 1px solid var(--ink);
+  padding-top: 6px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.price-disclaimer {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* ========================================================
+   18. ADMIN PRICING CONSOLE (Section 18)
+   ======================================================== */
+.admin-console-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.admin-pricing-card {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 8px;
+}
+
+.admin-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-val-readout {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.admin-card-footer {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 32. Empty States */
+.brutalist-empty-box {
+  background: var(--surface);
+  border: 2px dashed var(--line);
+  padding: 32px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.empty-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  max-width: 320px;
+}
