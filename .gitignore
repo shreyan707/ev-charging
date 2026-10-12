@@ -60,3 +60,16 @@ lerna-debug.log*
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Office temp lock files
+~$*
+
+# LaTeX auxiliary files
+*.aux
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+
+
+assignments
