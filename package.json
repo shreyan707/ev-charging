@@ -4,13 +4,16 @@
   "description": "Blockchain-based EV Charging System",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev",
-    "seed": "node backend/scripts/seed.js",
-    "compile:contracts": "cd hardhat && npx hardhat compile",
-    "deploy:contracts": "cd hardhat && npx hardhat run scripts/deploy.js --network amoy"
+    "start": "bun backend/server.js",
+    "dev": "concurrently \"bun run dev:frontend\" \"bun run dev:backend\"",
+    "dev:all": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\" \"bun run ai\"",
+    "dev:frontend": "cd frontend && bun run dev",
+    "dev:backend": "cd backend && bun run dev",
+    "ai": "cd ai && uv run uvicorn app:app --host 0.0.0.0 --port 8000 --reload",
+    "iot": "cd iot && uv run python simulator.py",
+    "seed": "cd backend && bun run scripts/seed.js",
+    "compile:contracts": "cd hardhat && bunx hardhat compile",
+    "deploy:contracts": "cd hardhat && bunx hardhat run scripts/deploy.js --network amoy"
   },
   "dependencies": {
     "cors": "^2.8.5",
