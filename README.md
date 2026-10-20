@@ -165,8 +165,8 @@ ev-charging/
 ## 🚦 Getting Started & Quick Start Guide
 
 ### Prerequisites
-* **Node.js** (v18+ recommended) & **npm**
-* **Python** (v3.9+) with `pip`
+* **Bun** (`curl -fsSL https://bun.sh/install | bash` or `brew install bun`)
+* **uv** (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`)
 * **Docker & Docker Compose** (for MongoDB and Mosquitto broker)
 * **MetaMask** browser extension configured for localhost (RPC: `http://127.0.0.1:8545`, Chain ID: `31337`)
 
@@ -185,15 +185,15 @@ docker compose up -d
 Open a terminal for Hardhat:
 ```bash
 cd hardhat
-npm install
+bun install
 
 # Start local blockchain node
-npx hardhat node
+bunx hardhat node
 ```
 In a new terminal tab, deploy the contract to your local node:
 ```bash
 cd hardhat
-npx hardhat run scripts/deploy.js --network localhost
+bunx hardhat run scripts/deploy.js --network localhost
 ```
 *This updates `hardhat/deployed_contracts.json` with the deployed contract address and ABI.*
 
@@ -203,10 +203,9 @@ npx hardhat run scripts/deploy.js --network localhost
 In a new terminal:
 ```bash
 cd ai
-pip install -r requirements.txt
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
-*The AI service trains the demand forecast model upon startup and listens at `http://localhost:8000`.*
+*The AI service dependencies and virtual environment are automatically managed by `uv`. The demand forecast model is trained upon startup and listens at `http://localhost:8000`.*
 
 ---
 
@@ -214,13 +213,13 @@ uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 In a new terminal:
 ```bash
 cd backend
-npm install
+bun install
 
 # (Optional) Seed initial stations into MongoDB
-node scripts/seed.js
+bun run seed
 
 # Start backend server with live reload
-npm run dev
+bun run dev
 ```
 *Backend runs on `http://localhost:5000` with MQTT listener active.*
 
@@ -230,8 +229,8 @@ npm run dev
 In a new terminal:
 ```bash
 cd frontend
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 *Open [http://localhost:5173](http://localhost:5173) in your browser.* Connect your MetaMask wallet using one of the pre-funded Hardhat private accounts.
 
@@ -241,10 +240,24 @@ npm run dev
 Once you book a slot and initiate charging in the frontend, launch the IoT simulator to publish live voltage and current readings:
 ```bash
 cd iot
-pip install -r requirements.txt
-python simulator.py
+uv run python simulator.py
 ```
 *The simulator detects active charging sessions from the backend and streams real-time telemetry over MQTT.*
+
+---
+
+### ⚡ One-Command Full Stack (From Project Root)
+You can also run everything directly from the project root using `bun`:
+```bash
+# Start frontend and backend concurrently
+bun run dev
+
+# Or start all three (frontend, backend, AI) together
+bun run dev:all
+
+# Run IoT simulator
+bun run iot
+```
 
 ---
 
@@ -280,7 +293,7 @@ python simulator.py
 Run the comprehensive Hardhat test suite covering slot booking collisions, state transitions, dynamic pricing computations, and access control:
 ```bash
 cd hardhat
-npx hardhat test
+bunx hardhat test
 ```
 
 ### AI Endpoint Smoke Test
