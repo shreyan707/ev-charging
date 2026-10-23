@@ -75,8 +75,12 @@ flowchart TD
   * Cumulative Energy ($\Delta Wh = \frac{P \times \Delta t}{3600}$)
 * **Eclipse Mosquitto Broker**: Dockerized high-throughput pub/sub broker handling telemetry channels under `voltnet/session/{sessionId}/telemetry`.
 
-### 3. AI Predictive Analytics & Fraud Detection (`ai/app.py`)
-* **Demand Forecasting (`/predict-demand`)**: Scikit-Learn Linear Regression trained on historical campus charging patterns to forecast station occupancy based on station ID, time of day, and day of week. Dynamically activates peak pricing markups (+30%) or off-peak green discounts (-50%).
+### 3. AI Predictive Analytics & Fraud Detection (`ai/`)
+* **Phase 4 Hybrid Network Demand Forecasting (`/forecast-network`, `/predict-demand`)**:
+  * Hybrid Linear Regression + XGBoost Residual (`voltnet_hybrid.joblib`) producing 1-step-ahead (15-minute) aggregate charging power forecasts (in kW) across the entire network.
+  * Level-adaptive split-conformal prediction intervals (`voltnet_intervals.joblib`) calibrated to nominal 90% coverage ($\alpha = 0.10$).
+  * Backwards-compatible station-level occupancy baseline and dynamic tariff recommendation (+30% peak pricing markup / -50% green discount).
+* **Session Plausibility Screening (`/screen-session`)**: Statistical review screening (Rule 2) evaluating completed charging sessions against empirical 99.9th percentile power thresholds by charger type (~9.7 kW for AC Type 0, ~113.0 kW for DC Fast Type 1), minimum duration limits (<5 min with >1 kWh), and duplicate session detection.
 * **Real-Time Telemetry Fraud Detection (`/detect-fraud`)**: Audits incoming electrical streams against four physical violation rules:
   1. *Zero-time energy anomaly*: Significant energy recorded with zero elapsed duration.
   2. *Physical over-current limit*: Reported power exceeding charger hardware limit (>25 kW).

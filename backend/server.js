@@ -675,6 +675,37 @@ app.get("/api/ai/battery-health/:userAddress", async (req, res) => {
   }
 });
 
+// GET 1-step ahead network aggregate power forecast from AI microservice
+app.get("/api/ai/network-forecast", async (req, res) => {
+  try {
+    const response = await fetch("http://127.0.0.1:8000/forecast-network");
+    if (response.ok) {
+      const data = await response.json();
+      res.json(data);
+    } else {
+      const err = await response.json().catch(() => ({}));
+      res.status(response.status).json(err);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST screen session plausibility (Rule 2 statistical screen)
+app.post("/api/ai/screen-session", async (req, res) => {
+  try {
+    const response = await fetch("http://127.0.0.1:8000/screen-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start Express Server
 app.listen(PORT, () => {
   console.log(`Express server listening on port ${PORT}`);
