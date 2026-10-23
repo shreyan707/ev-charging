@@ -1,0 +1,25 @@
+cap_frac,metric,policy,value,diff_vs_FCFS,ci_lo,ci_hi,flagged_value
+0.6,mean_wait_min,FCFS,31.1,0.0,0.0,0.0,10.4
+0.6,mean_wait_min,Trust-aware,31.14,0.03,0.0,0.07,23.78
+0.6,mean_wait_min,Pred-SJF,30.57,-0.44,-1.05,0.03,11.13
+0.6,mean_wait_min,SJF-oracle (bound),19.7,-10.03,-13.49,-7.1,2.97
+0.6,mean_wait_min,Pred-SJF (user),26.8,-3.74,-5.99,-2.12,10.04
+0.6,mean_wait_min,Trust (user history),34.06,2.54,1.47,3.98,9.9
+0.6,reneged_%,FCFS,8.09,0.0,0.0,0.0,0.0
+0.6,reneged_%,Trust-aware,8.13,0.03,0.01,0.06,11.32
+0.6,reneged_%,Pred-SJF,8.2,0.1,0.05,0.15,1.89
+0.6,reneged_%,SJF-oracle (bound),6.59,-1.29,-1.7,-0.88,0.0
+0.6,reneged_%,Pred-SJF (user),7.98,-0.06,-0.29,0.17,1.89
+0.6,reneged_%,Trust (user history),8.74,0.6,0.39,0.8,3.77
+0.8,mean_wait_min,FCFS,4.33,0.0,0.0,0.0,2.69
+0.8,mean_wait_min,Trust-aware,4.34,0.01,-0.0,0.03,8.72
+0.8,mean_wait_min,Pred-SJF,4.33,0.0,-0.01,0.01,2.83
+0.8,mean_wait_min,SJF-oracle (bound),3.41,-0.77,-1.17,-0.43,0.8
+0.8,mean_wait_min,Pred-SJF (user),4.0,-0.28,-0.46,-0.13,4.42
+0.8,mean_wait_min,Trust (user history),4.58,0.2,0.04,0.42,1.94
+0.8,reneged_%,FCFS,1.78,0.0,0.0,0.0,0.0
+0.8,reneged_%,Trust-aware,1.8,0.01,0.0,0.03,5.66
+0.8,reneged_%,Pred-SJF,1.8,0.02,0.0,0.05,0.0
+0.8,reneged_%,SJF-oracle (bound),1.77,0.01,-0.15,0.16,0.0
+0.8,reneged_%,Pred-SJF (user),1.89,0.11,-0.02,0.23,0.0
+0.8,reneged_%,Trust (user history),2.04,0.23,0.14,0.32,1.89

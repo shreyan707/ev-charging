@@ -1,0 +1,4 @@
+detector,precision,recall,FPR_on_clean,recall_energy_inflated,recall_truncated_duration,recall_duplicate
+rule2,0.931,0.906,0.004,0.807,0.911,1.0
+rule2_nodup,0.896,0.575,0.004,0.807,0.911,0.008
+iso,0.098,0.021,0.012,0.008,0.027,0.027
